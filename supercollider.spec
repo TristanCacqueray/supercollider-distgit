@@ -1,5 +1,3 @@
-# https://supercollider.github.io/
-
 # build options
 %define cmakeopts -DCMAKE_SKIP_RPATH:BOOL=ON -DCMAKE_C_FLAGS="%{optflags} -fext-numeric-literals" -DCMAKE_CXX_FLAGS="%{optflags} -fext-numeric-literals"
 %ifarch %{arm}
@@ -16,19 +14,10 @@ License: GPL
 Group: Applications/Multimedia
 URL: https://supercollider.github.io/
 
-Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source.tar.bz2
+Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
 
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-Requires: emacs w3m-el
-Packager: Fernando Lopez-Lezcano
-Vendor: Planet CCRMA
-Distribution: Planet CCRMA
-
-# move back sub-packages into main sc package
-Obsoletes: supercollider-libscsynth <= 3.4.5
-Provides: supercollider-libscsynth <= 3.4.5
-Obsoletes: supercollider-sclang <= 3.4.5
-Provides: supercollider-sclang <= 3.4.5
+Requires: emacs
+Requires: qjackctl
 
 BuildRequires: cmake gcc-c++ autoconf automake libtool pkgconfig
 BuildRequires: jack-audio-connection-kit-devel libsndfile-devel alsa-lib-devel
@@ -98,9 +87,6 @@ SuperCollider support for the Vim text editor.
 %setup -q -n SuperCollider-Source
 
 %build
-# remove all git directories
-find . -type d -name .git -printf "\"%h/%f\"\n" | xargs rm -rf
-
 %ifarch x86_64
 SUFFIX=" -DLIB_SUFFIX=64"
 %else
@@ -109,23 +95,19 @@ SUFFIX=""
 
 mkdir build
 pushd build
-cmake ${SUFFIX} -DSYSTEM_BOOST=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=TRUE -DCMAKE_INSTALL_PREFIX=%{_prefix} \
-      %{cmakeopts} %{cmakearch} %{?geditver}  ..
+cmake ${SUFFIX} -DSYSTEM_BOOST=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=TRUE -DCMAKE_INSTALL_PREFIX=%{_prefix} %{cmakeopts} %{cmakearch} %{?geditver}  ..
 make %{?_smp_mflags}
 popd
 
 %install
-rm -rf $RPM_BUILD_ROOT
-
 pushd build
-make install DESTDIR=$RPM_BUILD_ROOT
-# install external libraries needed to build external ugens
-mkdir -p $RPM_BUILD_ROOT%{_includedir}/SuperCollider/external_libraries
-cd ../external_libraries/
-tar cf - boost* nova* | (cd $RPM_BUILD_ROOT%{_includedir}/SuperCollider/external_libraries; tar xpf -)
+make install DESTDIR=%{buildroot}
 popd
+# install external header libraries needed to build external ugens
+mkdir -p %{buildroot}/%{_includedir}/SuperCollider/external_libraries
+cp -r external_libraries/nova* %{buildroot}/%{_includedir}/SuperCollider/external_libraries
 # install the version file
-install -m0644 SCVersion.txt $RPM_BUILD_ROOT%{_includedir}/SuperCollider/
+install -m0644 SCVersion.txt %{buildroot}/%{_includedir}/SuperCollider/
 
 %files
 %doc COPYING README*
@@ -176,6 +158,8 @@ install -m0644 SCVersion.txt $RPM_BUILD_ROOT%{_includedir}/SuperCollider/
 * Fri Apr 12 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.2-2
 - Add skip_rpath option to cmake
 - Removed un-necessary defattr and cleaning steps
+- Remove external libraries bundle
+- Switch to Source-linux release
 
 * Tue Jul 31 2018 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.10.2-1
 - update to 3.10.2 (fixes bad memory leak)
