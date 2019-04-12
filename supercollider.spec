@@ -31,10 +31,6 @@ BuildRequires: qt5-qtwebengine-devel
 BuildRequires: qt5-qtwebsockets-devel
 BuildRequires: qt5-qtsvg-devel
 
-BuildRequires: yaml-cpp03-devel
-BuildRequires: cwiid-devel
-# needed because emacs needs alternatives to be installed
-BuildRequires: chkconfig
 # for udev
 BuildRequires: systemd-devel
 BuildRequires: libatomic
