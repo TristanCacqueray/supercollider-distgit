@@ -1,3 +1,13 @@
+# https://supercollider.github.io/
+
+# build options
+%define cmakeopts -DCMAKE_C_FLAGS="%{optflags} -fext-numeric-literals" -DCMAKE_CXX_FLAGS="%{optflags} -fext-numeric-literals"
+%ifarch %{arm}
+%define cmakearch -DSUPERNOVA=OFF -DSSE=OFF -DSSE2=OFF -DNOVA_SIMD=ON -DSC_WII=OFF
+%else
+%define cmakearch -DSUPERNOVA=ON
+%endif
+
 Summary: Object oriented programming environment for real-time audio and video processing
 Name: supercollider
 Version: 3.10.2
@@ -5,15 +15,41 @@ Release: 1%{?dist}
 License: GPL
 Group: Applications/Multimedia
 URL: https://supercollider.github.io/
-Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
 
-Requires: qjackctl emacs
+Source0: SuperCollider-%{version}-%{?gitver:%{gitver}-}Source.tar.bz2
 
-BuildRequires: gcc gcc-c++ cmake git jack-audio-connection-kit-devel
-BuildRequires: libsndfile-devel fftw-devel libXt-devel libX11-devel boost-devel alsa-lib-devel
-BuildRequires: systemd-devel libatomic avahi-devel qt5-qtlocation-devel qt5-qtsensors-devel
-BuildRequires: readline-devel qt5-qtwebengine-devel qt5-qttools-devel
-BuildRequires: qt5-qtwebsockets-devel qt5-qtsvg-devel emacs qjackctl ccache
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
+Requires: emacs w3m-el
+Packager: Fernando Lopez-Lezcano
+Vendor: Planet CCRMA
+Distribution: Planet CCRMA
+
+# move back sub-packages into main sc package
+Obsoletes: supercollider-libscsynth <= 3.4.5
+Provides: supercollider-libscsynth <= 3.4.5
+Obsoletes: supercollider-sclang <= 3.4.5
+Provides: supercollider-sclang <= 3.4.5
+
+BuildRequires: cmake gcc-c++ autoconf automake libtool pkgconfig
+BuildRequires: jack-audio-connection-kit-devel libsndfile-devel alsa-lib-devel
+Buildrequires: fftw3-devel libcurl-devel emacs w3m ruby
+BuildRequires: avahi-devel libX11-devel libXt-devel
+BuildRequires: libicu-devel readline-devel
+BuildRequires: qt5-qtbase-devel qt5-qtsensors-devel qt5-qttools-devel
+BuildRequires: qt5-qtlocation-devel qt5-qtwebkit-devel
+# Add for 3.10.0
+BuildRequires: qt5-qtwebengine-devel
+BuildRequires: qt5-qtwebsockets-devel
+BuildRequires: qt5-qtsvg-devel
+
+BuildRequires: yaml-cpp03-devel 
+BuildRequires: cwiid-devel
+# needed because emacs needs alternatives to be installed
+BuildRequires: chkconfig
+# for udev
+BuildRequires: systemd-devel
+BuildRequires: libatomic
+BuildRequires: boost-devel
 
 %description
 SuperCollider is an object oriented programming environment for
@@ -25,9 +61,10 @@ compositions, interactive performances, installations etc.
 %package devel
 Summary: Development files for SuperCollider
 Group: Development/Libraries
-Requires: supercollider = %{version}-%{release} pkgconfig
+Requires: supercollider = %{version}-%{release} pkgconfig 
 Requires: jack-audio-connection-kit-devel alsa-lib-devel
 Requires: libsndfile-devel
+Requires: avahi-devel
 
 %description devel
 This package includes include files and libraries neede to develop
@@ -61,69 +98,177 @@ SuperCollider support for the Vim text editor.
 %setup -q -n SuperCollider-Source
 
 %build
+# remove all git directories
+find . -type d -name .git -printf "\"%h/%f\"\n" | xargs rm -rf 
+
+%ifarch x86_64
+SUFFIX=" -DLIB_SUFFIX=64 "
+%else
+SUFFIX=""
+%endif
+
 mkdir build
 pushd build
-%cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=%{_prefix} -DCMAKE_SKIP_RPATH:BOOL=ON ..
+cmake ${SUFFIX} -DSYSTEM_BOOST=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=TRUE -DCMAKE_INSTALL_PREFIX=%{_prefix} \
+      %{cmakeopts} %{cmakearch} %{?geditver}  ..
+make clean
 make %{?_smp_mflags}
 popd
 
 %install
-%{__mkdir} -p %{buildroot}
+rm -rf $RPM_BUILD_ROOT
 
 pushd build
-make install DESTDIR=%{buildroot}
+make install DESTDIR=$RPM_BUILD_ROOT
+# install external libraries needed to build external ugens
+mkdir -p $RPM_BUILD_ROOT%{_includedir}/SuperCollider/external_libraries
+cd ../external_libraries/
+tar cf - boost* nova* | (cd $RPM_BUILD_ROOT%{_includedir}/SuperCollider/external_libraries; tar xpf -)
 popd
+# install the version file
+install -m0644 SCVersion.txt $RPM_BUILD_ROOT%{_includedir}/SuperCollider/
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
 
 %files
+%defattr(-,root,root,-)
 %doc COPYING README*
-%{_bindir}/supernova
-%{_bindir}/scide
 %{_bindir}/sclang
-%{_bindir}/scsynth
-%{_libdir}/SuperCollider/plugins
-%{_datadir}/SuperCollider/SCClassLibrary
+# in doc
+%exclude %{_datadir}/SuperCollider/AUTHORS
+%exclude %{_datadir}/SuperCollider/COPYING
+%exclude %{_datadir}/SuperCollider/README.md
+%exclude %{_datadir}/SuperCollider/README_LINUX.md
+%exclude %{_datadir}/SuperCollider/CHANGELOG.md
 %{_datadir}/SuperCollider/HelpSource
-%{_datadir}/SuperCollider/HID_Support
+%{_datadir}/SuperCollider/SCClassLibrary
 %{_datadir}/SuperCollider/sounds
 %{_datadir}/SuperCollider/translations
-%{_datadir}/SuperCollider/AUTHORS
-%{_datadir}/SuperCollider/CHANGELOG.md
-%{_datadir}/SuperCollider/COPYING
-%{_datadir}/SuperCollider/README*
 %{_datadir}/pixmaps/supercollider*
-%{_datadir}/pixmaps/sc_ide.svg
-%{_datadir}/applications/SuperColliderIDE.desktop
+# scsynth
+%{_bindir}/scsynth
+%{_libdir}/SuperCollider/plugins
+%ifnarch %{arm}
+# supernova
+%{_bindir}/supernova
+%endif
+# examples
 %{_datadir}/SuperCollider/examples
+%exclude %{_datadir}/doc/SuperCollider/
+%{_datadir}/SuperCollider/HID_Support
+# ide
+%{_bindir}/scide
+%{_datadir}/applications/SuperColliderIDE.desktop
+%{_datadir}/pixmaps/sc_ide.svg
 
 %files devel
+%defattr(-,root,root,-)
 %{_includedir}/SuperCollider
 
 %files emacs
-%doc editors/sc-el/README.md
+%defattr(-,root,root,-)
 %{_datadir}/emacs/site-lisp/SuperCollider
 %{_datadir}/SuperCollider/Extensions/scide_scel
 
 %files vim
-%doc editors/scvim/README.md
-%{_datadir}/SuperCollider/Extensions/scide_scvim
+%defattr(-,root,root,-)
+%{_datadir}/SuperCollider/Extensions/scide_scvim/SCVim.sc
 
 %files gedit
-%doc editors/sced/README.md
-%{_libdir}/gedit/plugins/supercollider*
+%defattr(-,root,root,-)
+%{_libdir}/gedit*/plugins/*
 %{_datadir}/gtksourceview*/language-specs/supercollider.lang
 %{_datadir}/mime/packages/supercollider.xml
 
 %changelog
-* Thu Apr 11 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.2-1
-- Bump to 3.10.2
+* Tue Jul 31 2018 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.10.2-1
+- update to 3.10.2 (fixes bad memory leak)
 
-* Fri Aug 10 2012 Jørn Lomax <northlomax@gmail.com> 3.5.2-1
-- initial port to fedora
+* Tue Jul 31 2018 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.9.3-1
+- update to 3.9.3
+- updated scvim list of files (just one SC class)
+
+* Wed Oct 25 2017 Yann Collette <ycollette.nospam@free.fr> 3.8.0-1
+- update to 3.8.0
+
+* Thu Dec 15 2016 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.2-1
+- add "-fext-numeric-literals" to build on Fedora 25
+
+* Thu Nov 24 2016 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.2-1
+- update to 3.7.2
+
+* Wed Aug  5 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.2.350.gae6996d
+- newest git
+
+* Wed Aug  5 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.2.207.g4b75ab6
+- newest git again
+- some information on the atomic problem here:
+  http://stackoverflow.com/questions/31381892/fedora-22-compile-atomic-is-lock-free
+  so, link against libatomic and add the libatomic build requirement (link_with_atomic.patch)
+
+* Wed Jun  3 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.2.54.g29f2195
+- update to latest git again, 54.g29f2195
+
+* Wed May 13 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.1.111.ga86e12a
+- update to latest git
+
+* Tue Apr 14 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.1.ge130238
+- update to latest git ge130238
+- now requires qt5 and friends (the packaging has changed)
+
+* Tue Feb  3 2015 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.7.0-0.1.gf312c5f
+- get latest master git, relabel package to 3.7.0-0.1.git (alpha 0), this
+  should have been done in the last build (see SCVersion.txt)
+- add systemd-devel build requirement for udev libraries
+- increment calibrate_backoff to 60 seconds in supernova
+
+* Tue Dec 17 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.6-1.g7ed54b1
+- update to 3.6.6, latest git pull
+- add build requirement for older version of yaml-cpp03 for Fedora > 19
+- removed README docs from editors
+
+* Sun Sep 15 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.5-1.gc4f595a
+- update to latest git, do proper git release numbering
+
+* Tue Sep  3 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.5-1
+- start a build on the arm platform
+- update to latest git
+- add patch for enabling nanosleep (patch2)
+- set SC_WII=OFF as there are problems with uint64_t & friends
+
+* Thu Jun 27 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.5-1
+- update to 3.6.5
+
+* Mon Apr 22 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.4-1
+- update to 3.6.4
+
+* Tue Mar 12 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.3-1
+- update to 3.6.3
+
+* Wed Jan 16 2013 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.6.2-1
+- update to 3.6.2
+- add yaml-cpp-devel build requirement
+- add SCVersion.txt to the install (needed by sc3-plugins)
+
+* Tue Sep 11 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5.5-1
+- update to 3.5.5
+
+* Sun Jul 15 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5.3-2
+- strip weird characters from sc source files, causes problems 
+  (apparently) with some locales
+
+* Wed Jun 27 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5.3-1
+- update to 3.5.3
 
 * Tue Jun 26 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5.2-1.fcX.1
 - rebuild for fc14 and gedit2
 
-* Wed May  9 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
+* Wed May  9 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 
 - downloaded Dan Stowell's version of Julius Smith's patch, no change in release
 
 * Tue May  8 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5.2-1
@@ -166,7 +311,7 @@ popd
 
 * Tue Feb 14 2012 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5-0.1.git20120213
 - update to current git
-- remove supercollider-sclang package and supercollider-libscsynth,
+- remove supercollider-sclang package and supercollider-libscsynth, 
   these packages were created when sc was not 64 bit compliant so
   we could install a 32 bit sclang on a 64 bit install
 - merge supernova package into main package, remove boost library from files
@@ -195,7 +340,7 @@ popd
   (again) separate packages
 - remove very old obsolete and provides
 
-* Wed Oct 18 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
+* Tue Oct 18 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 
 - tons of changes to the spec file
 
 * Tue Oct 18 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5-0.1.git20111018
@@ -203,7 +348,7 @@ popd
 
 * Sat Oct 15 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
 - add git version of sc3-plugins, latest swingosc and latest quarks
-- package cruciallib for Instr and friends (used to be part of the
+- package cruciallib for Instr and friends (used to be part of the 
   main distribution)
 
 * Fri Oct 14 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.5-0.1.git20111014
@@ -216,7 +361,7 @@ popd
 
 * Tue May 31 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.4-2
 - added -fpermissive workaround for building on fc15/gcc4.6 (SC_Wii.cpp
-  fails to compile). This is of course not a proper fix.
+  fails to compile). This is of course not a proper fix. 
 
 * Sat Jan  8 2011 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.4-2
 - add optimizations to plugins build
@@ -240,29 +385,29 @@ popd
   stk
 
 * Mon Mar  8 2010 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.3.1-4
-- rebuild against newer stk libraries, fails to link at runtime with
+- rebuild against newer stk libraries, fails to link at runtime with 
   missing symbols (will try with static stk build)
 
 * Fri Jan 22 2010 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.3.1-3
 - split libscsynth into a separate package so that both 32 and 64 bits
   versions can be installed in a 64 bit environment (the 32 bit version
-  is needed by the 32 bit sclang binary).
+  is needed by the 32 bit sclang binary). 
 
 * Tue Jul 21 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.3.1-2
 - add patch2 to deal with breakage in gcc4.4/fc11 in swingosc, see
   http://www.listarc.bham.ac.uk/lists/sc-dev/msg10558.html
 
-* Sat Jul  4 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
+* Sat Jul  4 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 
 - install to proper lib64 path on x86_64
 - add sc scel code to install, SConstruct fails to install it
 
-* Wed Jul  1 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
+* Wed Jul  1 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 
 - split out language in supercollider-sclang
 - redo all file lists based on manual installs in a mock chroot
 - enable builds on x86_64, the supercollider-sclang will be copied
   from the i386 build
 
-* Tue Jun 30 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu>
+* Tue Jun 30 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 
 - split emacs support into separate package
 - added ProcMod.sc patch from Josh for extras
 - create MathLib, AmbIEM, redUniverse, dewdrop_lib packages from
@@ -271,7 +416,7 @@ popd
 * Sun Jun 28 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.3.1-1
 - updated to stable 3.3.1 with Extras
 - rework stk.so patch, AY patch included now in source
-- rework scvim and sced install
+- rework scvim and sce idnstall
 
 * Fri Jun 12 2009 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.3-1
 - updated to stable 3.3 with Extras (added Obsoletes/Provides for all
@@ -314,11 +459,11 @@ popd
 - built on CentOS
 - won't build on x86_64
 
-* Sat Nov 17 2007 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU>
+* Sat Nov 17 2007 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU> 
 - installed Headers in the proper location that matches the pkgconfig
   CFLAGS locations
 
-* Tue Jul 24 2007 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU>
+* Tue Jul 24 2007 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU> 
 - updated to svn from 07.07.23
 - added w3m to build and run dependencies
 - "source" directory is now "Source"
@@ -380,7 +525,7 @@ popd
 * Thu Jan  5 2006 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU> 0.0.20060105
 - updated to cvs snapshot 2006.01.05
 
-* Fri Jul 15 2005 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU>
+* Fri Jul 15 2005 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU> 
 - added fc4/gcc4 patch posted by Russell Johnston
 
 * Thu Jul 14 2005 Fernando Lopez-Lezcano <nando@ccrma.Stanford.EDU> 0.0.20050714
