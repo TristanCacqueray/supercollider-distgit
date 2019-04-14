@@ -9,7 +9,7 @@ Summary: Object oriented programming environment for real-time audio and video p
 Name: supercollider
 Version: 3.10.2
 Release: 2%{?dist}
-License: GPL
+License: GPLv2+
 URL: https://supercollider.github.io/
 
 Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
@@ -21,10 +21,9 @@ BuildRequires: alsa-lib-devel
 BuildRequires: avahi-devel
 BuildRequires: boost-devel
 BuildRequires: cmake
+BuildRequires: desktop-file-utils
 BuildRequires: emacs
 BuildRequires: fftw3-devel
-BuildRequires: gcc
-BuildRequires: gcc-c++
 BuildRequires: jack-audio-connection-kit-devel
 BuildRequires: libatomic
 BuildRequires: libcurl-devel
@@ -34,6 +33,7 @@ BuildRequires: libtool
 BuildRequires: libX11-devel
 BuildRequires: libXt-devel
 BuildRequires: pkgconfig
+BuildRequires: python3-devel
 BuildRequires: qt5-qtbase-devel
 BuildRequires: qt5-qtlocation-devel
 BuildRequires: qt5-qtsensors-devel
@@ -55,6 +55,7 @@ compositions, interactive performances, installations etc.
 
 %package devel
 Summary: Development files for SuperCollider
+BuildArch: noarch
 Requires: supercollider%{?_isa} = %{version}-%{release}
 Requires: alsa-lib-devel
 Requires: avahi-devel
@@ -64,11 +65,12 @@ Requires: libsndfile-devel
 Requires: pkgconfig
 
 %description devel
-This package includes include files and libraries neede to develop
+This package includes include files and libraries needed to develop
 SuperCollider applications
 
 %package emacs
 Summary: SuperCollider support for Emacs
+BuildArch: noarch
 Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description emacs
@@ -76,6 +78,7 @@ SuperCollider support for the Emacs text editor.
 
 %package gedit
 Summary: SuperCollider support for GEdit
+BuildArch: noarch
 Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description gedit
@@ -83,6 +86,7 @@ SuperCollider support for the GEdit text editor.
 
 %package vim
 Summary: SuperCollider support for Vim
+BuildArch: noarch
 Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description vim
@@ -122,9 +126,18 @@ mkdir -p %{buildroot}/%{_includedir}/SuperCollider/external_libraries
 cp -r external_libraries/nova* %{buildroot}/%{_includedir}/SuperCollider/external_libraries
 # install the version file
 install -m0644 SCVersion.txt %{buildroot}/%{_includedir}/SuperCollider/
+# remove .placeholder file
+find %{buildroot}/%{_datadir} -name .placeholder -delete
 
 %check
 desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.desktop
+
+%post
+update-desktop-database &> /dev/null || :
+update-mime-database %{_datadir}/mime
+
+%postun
+update-desktop-database &> /dev/null || :
 
 %files
 %doc README*
@@ -144,6 +157,7 @@ desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.des
 %{_datadir}/pixmaps/supercollider*
 # scsynth
 %{_bindir}/scsynth
+%dir %{_libdir}/SuperCollider
 %{_libdir}/SuperCollider/plugins
 %ifnarch %{arm}
 # supernova
@@ -157,6 +171,7 @@ desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.des
 %{_bindir}/scide
 %{_datadir}/applications/SuperColliderIDE.desktop
 %{_datadir}/pixmaps/sc_ide.svg
+%{_datadir}/mime/packages/supercollider.xml
 
 %files devel
 %{_includedir}/SuperCollider
@@ -171,7 +186,6 @@ desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.des
 %files gedit
 %{_libdir}/gedit*/plugins/*
 %{_datadir}/gtksourceview*/language-specs/supercollider.lang
-%{_datadir}/mime/packages/supercollider.xml
 
 %changelog
 * Fri Apr 12 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.2-2
