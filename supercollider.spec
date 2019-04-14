@@ -1,5 +1,4 @@
 # build options
-%define cmakeopts -DCMAKE_SKIP_RPATH:BOOL=ON -DCMAKE_C_FLAGS="%{optflags} -fext-numeric-literals" -DCMAKE_CXX_FLAGS="%{optflags} -fext-numeric-literals"
 %ifarch %{arm}
 %define cmakearch -DSUPERNOVA=OFF -DSSE=OFF -DSSE2=OFF -DNOVA_SIMD=ON -DSC_WII=OFF
 %else
@@ -11,7 +10,6 @@ Name: supercollider
 Version: 3.10.2
 Release: 2%{?dist}
 License: GPL
-Group: Applications/Multimedia
 URL: https://supercollider.github.io/
 
 Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
@@ -19,19 +17,34 @@ Source0: https://github.com/supercollider/supercollider/releases/download/Versio
 Requires: emacs
 Requires: qjackctl
 
-BuildRequires: cmake gcc-c++ autoconf automake libtool pkgconfig
-BuildRequires: jack-audio-connection-kit-devel libsndfile-devel alsa-lib-devel
-Buildrequires: fftw3-devel libcurl-devel emacs w3m ruby
-BuildRequires: avahi-devel libX11-devel libXt-devel
-BuildRequires: libicu-devel readline-devel
-BuildRequires: qt5-qtbase-devel qt5-qtsensors-devel qt5-qttools-devel
-BuildRequires: qt5-qtlocation-devel qt5-qtwebkit-devel
-# Add for 3.10.0
+BuildRequires: cmake
+BuildRequires: gcc-c++
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: libtool
+BuildRequires: pkgconfig
+BuildRequires: jack-audio-connection-kit-devel
+BuildRequires: libsndfile-devel
+BuildRequires: alsa-lib-devel
+BuildRequires: fftw3-devel
+BuildRequires: libcurl-devel
+BuildRequires: emacs
+BuildRequires: w3m
+BuildRequires: ruby
+BuildRequires: avahi-devel
+BuildRequires: libX11-devel
+BuildRequires: libXt-devel
+BuildRequires: libicu-devel
+BuildRequires: readline-devel
+BuildRequires: qt5-qtbase-devel
+BuildRequires: qt5-qtsensors-devel
+BuildRequires: qt5-qttools-devel
+BuildRequires: qt5-qtlocation-devel
+BuildRequires: qt5-qtwebkit-devel
 BuildRequires: qt5-qtwebengine-devel
 BuildRequires: qt5-qtwebsockets-devel
 BuildRequires: qt5-qtsvg-devel
 
-# for udev
 BuildRequires: systemd-devel
 BuildRequires: libatomic
 BuildRequires: boost-devel
@@ -45,9 +58,10 @@ compositions, interactive performances, installations etc.
 
 %package devel
 Summary: Development files for SuperCollider
-Group: Development/Libraries
-Requires: supercollider = %{version}-%{release} pkgconfig
-Requires: jack-audio-connection-kit-devel alsa-lib-devel
+Requires: supercollider%{?_isa} = %{version}-%{release}
+Requires: pkgconfig
+Requires: jack-audio-connection-kit-devel
+Requires: alsa-lib-devel
 Requires: libsndfile-devel
 Requires: avahi-devel
 
@@ -57,24 +71,21 @@ SuperCollider applications
 
 %package emacs
 Summary: SuperCollider support for Emacs
-Group: Applications/Multimedia
-Requires: supercollider = %{version}-%{release}
+Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description emacs
 SuperCollider support for the Emacs text editor.
 
 %package gedit
 Summary: SuperCollider support for GEdit
-Group: Applications/Multimedia
-Requires: supercollider = %{version}-%{release}
+Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description gedit
 SuperCollider support for the GEdit text editor.
 
 %package vim
 Summary: SuperCollider support for Vim
-Group: Applications/Multimedia
-Requires: supercollider = %{version}-%{release}
+Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description vim
 SuperCollider support for the Vim text editor.
@@ -83,21 +94,22 @@ SuperCollider support for the Vim text editor.
 %setup -q -n SuperCollider-Source
 
 %build
-%ifarch x86_64
-SUFFIX=" -DLIB_SUFFIX=64"
-%else
-SUFFIX=""
-%endif
-
 mkdir build
 pushd build
-cmake ${SUFFIX} -DSYSTEM_BOOST=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE=TRUE -DCMAKE_INSTALL_PREFIX=%{_prefix} %{cmakeopts} %{cmakearch} %{?geditver}  ..
-make %{?_smp_mflags}
+export CFLAGS="%{build_cflags} -fext-numeric-literals"
+export CXXFLAGS="%{build_cxxflags} -fext-numeric-literals"
+%cmake -DCMAKE_SKIP_RPATH:BOOL=ON \
+       -DSYSTEM_BOOST=ON \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DCMAKE_VERBOSE_MAKEFILE=TRUE \
+       %{cmakearch} %{?geditver} \
+       ..
+%make_build
 popd
 
 %install
 pushd build
-make install DESTDIR=%{buildroot}
+%make_install
 popd
 # install external header libraries needed to build external ugens
 mkdir -p %{buildroot}/%{_includedir}/SuperCollider/external_libraries
@@ -105,8 +117,12 @@ cp -r external_libraries/nova* %{buildroot}/%{_includedir}/SuperCollider/externa
 # install the version file
 install -m0644 SCVersion.txt %{buildroot}/%{_includedir}/SuperCollider/
 
+%check
+desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.desktop
+
 %files
-%doc COPYING README*
+%doc README*
+%license COPYING
 %{_bindir}/sclang
 # in doc
 %exclude %{_datadir}/SuperCollider/AUTHORS
@@ -114,6 +130,7 @@ install -m0644 SCVersion.txt %{buildroot}/%{_includedir}/SuperCollider/
 %exclude %{_datadir}/SuperCollider/README.md
 %exclude %{_datadir}/SuperCollider/README_LINUX.md
 %exclude %{_datadir}/SuperCollider/CHANGELOG.md
+%dir %{_datadir}/SuperCollider
 %{_datadir}/SuperCollider/HelpSource
 %{_datadir}/SuperCollider/SCClassLibrary
 %{_datadir}/SuperCollider/sounds
