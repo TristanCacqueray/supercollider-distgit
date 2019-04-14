@@ -17,37 +17,34 @@ Source0: https://github.com/supercollider/supercollider/releases/download/Versio
 Requires: emacs
 Requires: qjackctl
 
-BuildRequires: cmake
-BuildRequires: gcc-c++
-BuildRequires: autoconf
-BuildRequires: automake
-BuildRequires: libtool
-BuildRequires: pkgconfig
-BuildRequires: jack-audio-connection-kit-devel
-BuildRequires: libsndfile-devel
 BuildRequires: alsa-lib-devel
-BuildRequires: fftw3-devel
-BuildRequires: libcurl-devel
-BuildRequires: emacs
-BuildRequires: w3m
-BuildRequires: ruby
 BuildRequires: avahi-devel
+BuildRequires: boost-devel
+BuildRequires: cmake
+BuildRequires: emacs
+BuildRequires: fftw3-devel
+BuildRequires: gcc
+BuildRequires: gcc-c++
+BuildRequires: jack-audio-connection-kit-devel
+BuildRequires: libatomic
+BuildRequires: libcurl-devel
+BuildRequires: libicu-devel
+BuildRequires: libsndfile-devel
+BuildRequires: libtool
 BuildRequires: libX11-devel
 BuildRequires: libXt-devel
-BuildRequires: libicu-devel
-BuildRequires: readline-devel
+BuildRequires: pkgconfig
 BuildRequires: qt5-qtbase-devel
-BuildRequires: qt5-qtsensors-devel
-BuildRequires: qt5-qttools-devel
 BuildRequires: qt5-qtlocation-devel
-BuildRequires: qt5-qtwebkit-devel
-BuildRequires: qt5-qtwebengine-devel
-BuildRequires: qt5-qtwebsockets-devel
+BuildRequires: qt5-qtsensors-devel
 BuildRequires: qt5-qtsvg-devel
-
+BuildRequires: qt5-qttools-devel
+BuildRequires: qt5-qtwebengine-devel
+BuildRequires: qt5-qtwebkit-devel
+BuildRequires: qt5-qtwebsockets-devel
+BuildRequires: readline-devel
 BuildRequires: systemd-devel
-BuildRequires: libatomic
-BuildRequires: boost-devel
+BuildRequires: yaml-cpp-devel
 
 %description
 SuperCollider is an object oriented programming environment for
@@ -59,11 +56,12 @@ compositions, interactive performances, installations etc.
 %package devel
 Summary: Development files for SuperCollider
 Requires: supercollider%{?_isa} = %{version}-%{release}
-Requires: pkgconfig
-Requires: jack-audio-connection-kit-devel
 Requires: alsa-lib-devel
-Requires: libsndfile-devel
 Requires: avahi-devel
+Requires: boost-devel
+Requires: jack-audio-connection-kit-devel
+Requires: libsndfile-devel
+Requires: pkgconfig
 
 %description devel
 This package includes include files and libraries neede to develop
@@ -92,6 +90,13 @@ SuperCollider support for the Vim text editor.
 
 %prep
 %setup -q -n SuperCollider-Source
+# Ensure external libraries bundle are not used
+rm -Rf external_libraries/boost external_libraries/boost*.patch external_libraries/yaml-cpp
+# Remove unused boost component not provided by system package
+sed -e 's/ test_exec_monitor//'                  \
+    -e 's/.*boost_test_exec_monitor_lib.*//'     \
+    -e 's/.*Boost_TEST_EXEC_MONITOR_LIBRARY.*//' \
+    -i CMakeLists.txt
 
 %build
 mkdir build
@@ -100,6 +105,7 @@ export CFLAGS="%{build_cflags} -fext-numeric-literals"
 export CXXFLAGS="%{build_cxxflags} -fext-numeric-literals"
 %cmake -DCMAKE_SKIP_RPATH:BOOL=ON \
        -DSYSTEM_BOOST=ON \
+       -DSYSTEM_YAMLCPP=ON \
        -DCMAKE_BUILD_TYPE=Release \
        -DCMAKE_VERBOSE_MAKEFILE=TRUE \
        %{cmakearch} %{?geditver} \
@@ -169,10 +175,12 @@ desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.des
 
 %changelog
 * Fri Apr 12 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.2-2
-- Add skip_rpath option to cmake
-- Removed un-necessary defattr and cleaning steps
-- Remove external libraries bundle
-- Switch to Source-linux release
+- add skip_rpath option to cmake
+- removed un-necessary defattr and cleaning steps
+- remove boost/yaml-cpp bundle
+- switch to Source-linux release
+- use rpm macros
+- cleanup for Fedora review request
 
 * Tue Jul 31 2018 Fernando Lopez-Lezcano <nando@ccrma.stanford.edu> 3.10.2-1
 - update to 3.10.2 (fixes bad memory leak)
