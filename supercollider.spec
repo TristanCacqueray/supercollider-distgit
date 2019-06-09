@@ -1,4 +1,5 @@
 # build options
+%{!?qt5_qtwebengine_arches:%global qt5_qtwebengine_arches %{ix86} x86_64 %{arm} aarch64 mips mipsel mips64el}
 %ifarch %{arm}
 %define cmakearch -DSUPERNOVA=OFF -DSSE=OFF -DSSE2=OFF -DNOVA_SIMD=ON -DSC_WII=OFF
 %else
@@ -13,6 +14,11 @@ License: GPLv2+
 URL: https://supercollider.github.io/
 
 Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
+
+# https://github.com/supercollider/supercollider/pull/4447
+Patch01: 0001-Fix-compilation-with-boost-1.67.patch
+
+BuildArch: %{qt5_qtwebengine_arches}
 
 Requires: emacs
 Requires: qjackctl
@@ -94,6 +100,7 @@ SuperCollider support for the Vim text editor.
 
 %prep
 %setup -q -n SuperCollider-Source
+%patch01 -p1
 # Ensure external libraries bundle are not used
 rm -Rf external_libraries/boost external_libraries/boost*.patch external_libraries/yaml-cpp
 # Remove unused boost component not provided by system package
