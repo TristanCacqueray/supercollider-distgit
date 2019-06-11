@@ -154,13 +154,6 @@ find %{buildroot}/%{_datadir} -name .placeholder -delete
 %check
 desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.desktop
 
-%post
-update-desktop-database &> /dev/null || :
-update-mime-database %{_datadir}/mime
-
-%postun
-update-desktop-database &> /dev/null || :
-
 %files
 %doc README*
 %license COPYING
