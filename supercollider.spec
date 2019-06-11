@@ -18,6 +18,12 @@ Source0: https://github.com/supercollider/supercollider/releases/download/Versio
 # https://github.com/supercollider/supercollider/pull/4447
 Patch01: 0001-Fix-compilation-with-boost-1.67.patch
 
+# https://github.com/timblechmann/nova-simd/pull/7
+Patch02: 0001-nova-simd-license-update-fsf-address.patch
+
+# https://github.com/timblechmann/nova-tt/pull/3
+Patch03: 0001-nova-tt-license-update-fsf-address.patch
+
 ExclusiveArch: %{qt5_qtwebengine_arches}
 
 Requires: emacs
@@ -99,7 +105,15 @@ SuperCollider support for the Vim text editor.
 
 %prep
 %setup -q -n SuperCollider-Source
+# Fix boost-1.67 compilation
 %patch01 -p1
+# Fix FSF address
+pushd external_libraries/nova-simd
+%patch02 -p1
+popd
+pushd external_libraries/nova-tt
+%patch03 -p1
+popd
 # Ensure external libraries bundle are not used
 rm -Rf external_libraries/boost external_libraries/boost*.patch external_libraries/yaml-cpp
 # Remove unused boost component not provided by system package
