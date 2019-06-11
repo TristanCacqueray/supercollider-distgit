@@ -18,7 +18,7 @@ Source0: https://github.com/supercollider/supercollider/releases/download/Versio
 # https://github.com/supercollider/supercollider/pull/4447
 Patch01: 0001-Fix-compilation-with-boost-1.67.patch
 
-BuildArch: %{qt5_qtwebengine_arches}
+ExclusiveArch: %{qt5_qtwebengine_arches}
 
 Requires: emacs
 Requires: qjackctl
@@ -84,7 +84,6 @@ SuperCollider support for the Emacs text editor.
 
 %package gedit
 Summary: SuperCollider support for GEdit
-BuildArch: noarch
 Requires: supercollider%{?_isa} = %{version}-%{release}
 
 %description gedit
