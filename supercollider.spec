@@ -36,6 +36,7 @@ BuildRequires: cmake
 BuildRequires: desktop-file-utils
 BuildRequires: emacs
 BuildRequires: fftw3-devel
+BuildRequires: gcc-c++
 BuildRequires: jack-audio-connection-kit-devel
 BuildRequires: libatomic
 BuildRequires: libcurl-devel
@@ -44,6 +45,7 @@ BuildRequires: libsndfile-devel
 BuildRequires: libtool
 BuildRequires: libX11-devel
 BuildRequires: libXt-devel
+BuildRequires: make
 BuildRequires: pkgconfig
 BuildRequires: python3-devel
 BuildRequires: qt5-qtbase-devel
