@@ -1,0 +1,35 @@
+From 643709850b2f22f68792372aaece5fc6512defc6 Mon Sep 17 00:00:00 2001
+From: Tristan Cacqueray <tdecacqu@redhat.com>
+Date: Sat, 25 Jan 2020 15:08:38 +0000
+Subject: [PATCH] Add missing cstdio import required for printf
+
+This change fixes this compilation failure:
+
+source/NHUGens/NHHall.cpp: In constructor 'NHHall::NHHall()':
+source/NHUGens/NHHall.cpp:56:13: error: 'printf' was not declared in this scope
+   56 |             printf("Could not allocate real-time memory for NHHall\n");
+      |             ^~~~~~
+source/NHUGens/NHHall.cpp:30:1: note: 'printf' is defined in header '<cstdio>'; did you forget to '#include <cstdio>'?
+   29 | #include "SC_PlugIn.hpp"
+  +++ |+#include <cstdio>
+   30 |
+In file included from source/NHUGens/NHHall.cpp:28:
+---
+ source/NHUGens/NHHall.cpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/source/NHUGens/NHHall.cpp b/source/NHUGens/NHHall.cpp
+index 4bd8bac..5719a2a 100644
+--- a/source/NHUGens/NHHall.cpp
++++ b/source/NHUGens/NHHall.cpp
+@@ -27,6 +27,7 @@ For more information, please refer to <http://unlicense.org>
+ 
+ #include "nh_hall.hpp"
+ #include "SC_PlugIn.hpp"
++#include <cstdio>
+ 
+ static InterfaceTable* ft;
+ 
+-- 
+2.24.1
+

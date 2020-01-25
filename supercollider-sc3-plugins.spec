@@ -1,11 +1,15 @@
 Summary: Collection of SuperCollider plugins
 Name: supercollider-sc3-plugins
 Version: 3.10.0
-Release: 2%{?dist}
+Release: 3%{?dist}
 License: GPL
 Group: Applications/Multimedia
 URL: https://supercollider.github.io/sc3-plugins/
 Source0: https://github.com/supercollider/sc3-plugins/releases/download/Version-%{version}/sc3-plugins-%{version}-Source.tar.bz2
+
+# https://github.com/supercollider/sc3-plugins/pull/271
+Patch01: 0001-Add-missing-cstdio-import-required-for-printf.patch
+
 Requires: supercollider >= 3.10
 
 BuildRequires: cmake gcc-c++ supercollider-devel fftw-devel stk-devel
@@ -15,6 +19,7 @@ Collection of SuperCollider plugins
 
 %prep
 %setup -q -n sc3-plugins-%{version}-Source
+%patch01 -p1
 
 %build
 %ifarch x86_64
@@ -40,6 +45,9 @@ popd
 %{_libdir}/SuperCollider/plugins/*
 
 %changelog
+* Sat Jan 25 2020 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.0-3
+- Add compilation fix patch
+
 * Fri Apr 12 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.0-2
 - Use github release sources
 - Remove un-necessary clean steps
