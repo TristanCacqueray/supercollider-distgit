@@ -8,21 +8,12 @@
 
 Summary: Object oriented programming environment for real-time audio and video processing
 Name: supercollider
-Version: 3.10.2
-Release: 2%{?dist}
+Version: 3.10.4
+Release: 1%{?dist}
 License: GPLv2+
 URL: https://supercollider.github.io/
 
 Source0: https://github.com/supercollider/supercollider/releases/download/Version-%{version}/SuperCollider-%{version}-Source-linux.tar.bz2
-
-# https://github.com/supercollider/supercollider/pull/4447
-Patch01: 0001-Fix-compilation-with-boost-1.67.patch
-
-# https://github.com/timblechmann/nova-simd/pull/7
-Patch02: 0001-nova-simd-license-update-fsf-address.patch
-
-# https://github.com/timblechmann/nova-tt/pull/3
-Patch03: 0001-nova-tt-license-update-fsf-address.patch
 
 ExclusiveArch: %{qt5_qtwebengine_arches}
 
@@ -107,15 +98,7 @@ SuperCollider support for the Vim text editor.
 
 %prep
 %setup -q -n SuperCollider-Source
-# Fix boost-1.67 compilation
-%patch01 -p1
-# Fix FSF address
-pushd external_libraries/nova-simd
-%patch02 -p1
-popd
-pushd external_libraries/nova-tt
-%patch03 -p1
-popd
+
 # Ensure external libraries bundle are not used
 rm -Rf external_libraries/boost external_libraries/boost*.patch external_libraries/yaml-cpp
 # Remove unused boost component not provided by system package
@@ -203,6 +186,9 @@ desktop-file-validate %{buildroot}/%{_datadir}/applications/SuperColliderIDE.des
 %{_datadir}/gtksourceview*/language-specs/supercollider.lang
 
 %changelog
+* Sat Jan 25 2020 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.4-1
+- Bump to 3.10.4
+
 * Fri Apr 12 2019 Tristan Cacqueray <tdecacqu@redhat.com> - 3.10.2-2
 - add skip_rpath option to cmake
 - removed un-necessary defattr and cleaning steps
